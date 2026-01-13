@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
 )
 
@@ -35,6 +36,11 @@ func main() {
 	}
 	if _, err := db.Exec("PRAGMA busy_timeout=5000;"); err != nil {
 		log.Fatal(err)
+	}
+
+	//load .env
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
 	}
 
 	// Inilize Schema

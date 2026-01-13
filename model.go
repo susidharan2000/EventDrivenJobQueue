@@ -27,5 +27,5 @@ type workerJob struct {
 type Email struct {
 	Email   string `json:"email"`
 	Subject string `json:"subject"`
-	Content string `json:"message"`
+	Body    string `json:"body"`
 }
