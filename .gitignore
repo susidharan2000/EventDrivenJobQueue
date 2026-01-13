@@ -1,0 +1,16 @@
+# Go build
+/bin/
+/dist/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Env
+.env
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
