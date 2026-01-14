@@ -69,33 +69,51 @@ func ClaimJob(db *sql.DB) (workerJob, error) {
 // mark the job Failed //retry and back off
 func markJobFailed(db *sql.DB, job workerJob) {
 	var att int
-	if job.Attempts < job.MaxRetries && job.Attempts <= 10 {
+	if job.Attempts < job.MaxRetries {
 		att = job.Attempts + 1
 		for {
-			_, err := db.Exec(`UPDATE jobs SET status = 'queued',run_at = datetime('now', '+10 seconds'),attempts = ?   WHERE id = ? AND status='processing'`, att, job.Id)
-			if err == nil {
-				fmt.Printf("Attempts:%v, MaxRetries:%v \n", att, job.MaxRetries)
+			res, err := db.Exec(`UPDATE jobs SET status = 'queued',run_at = datetime('now', '+10 seconds'),attempts = ?   WHERE id = ? AND status='processing'`, att, job.Id)
+			if err != nil {
+				if isLockedError(err) {
+					time.Sleep(1000 * time.Millisecond)
+					continue
+				}
+				fmt.Printf("Failed state update failed")
 				return
 			}
-			if isLockedError(err) {
-				time.Sleep(1000 * time.Millisecond)
-				continue
+			affected, err := res.RowsAffected()
+			if err != nil {
+				log.Println("Rows Affected error:", err)
+				return
 			}
-			fmt.Printf("Failed state update failed")
+			if affected == 0 {
+				fmt.Printf("Failed state update failed")
+				return
+			}
+			fmt.Printf("Attempts:%v, MaxRetries:%v \n", att, job.MaxRetries)
 			return
 		}
 	} else {
 		for {
-			_, err := db.Exec(`UPDATE jobs SET status = 'failed' WHERE id = ? AND status='processing'`, job.Id)
-			if err == nil {
-				fmt.Printf("Failed Job")
+			res, err := db.Exec(`UPDATE jobs SET status = 'failed' WHERE id = ? AND status='processing'`, job.Id)
+			if err != nil {
+				if isLockedError(err) {
+					time.Sleep(time.Millisecond)
+					continue
+				}
+				log.Println("markJobFailed error:", err)
 				return
 			}
-			if isLockedError(err) {
-				time.Sleep(time.Millisecond)
-				continue
+			affected, err := res.RowsAffected()
+			if err != nil {
+				log.Println("Rows Affected error:", err)
+				return
 			}
-			log.Println("markJobFailed error:", err)
+			if affected == 0 {
+				fmt.Printf("Failed state update failed")
+				return
+			}
+			log.Println("Job Marked", err)
 			return
 		}
 	}
@@ -103,21 +121,29 @@ func markJobFailed(db *sql.DB, job workerJob) {
 
 func markJobDone(db *sql.DB, id int) {
 	for {
-		_, err := db.Exec(`UPDATE jobs SET status = 'done' WHERE id = ? AND status='processing'`, id)
+		res, err := db.Exec(`UPDATE jobs SET status = 'done' WHERE id = ? AND status='processing'`, id)
 
-		if err == nil {
-			fmt.Printf("%v: Job Done\n", id)
+		if err != nil {
+			if isLockedError(err) {
+				time.Sleep(1000 * time.Millisecond)
+				continue
+			}
+			log.Println("mark Job Done error:", err)
 			return
 		}
 
-		if isLockedError(err) {
-			time.Sleep(1000 * time.Millisecond)
-			continue
+		affected, err := res.RowsAffected()
+		if err != nil {
+			log.Println("RowsAffected error:", err)
+			return
+		}
+		if affected == 0 {
+			log.Println("mark Jobs success error:", err)
+			return
 		}
 
-		log.Println("mark Jobs success error:", err)
+		fmt.Printf("%v: Job Done\n", id)
 		return
-
 	}
 }
 

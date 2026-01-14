@@ -55,7 +55,7 @@ func main() {
 
 	//start
 	go startDispatcher(db)
-	go startWorker(db)
+	go startWorkers(db)
 
 	router := NewRouter(db)
 	port := 8080
