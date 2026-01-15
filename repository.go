@@ -14,15 +14,32 @@ func InitJobsSchema(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS jobs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		type TEXT NOT NULL,
-		status TEXT NOT NULL,
+		status TEXT NOT NULL CHECK (
+			status IN ('queued', 'processing', 'done', 'failed')
+		),
 		payload BLOB NOT NULL,
 		attempts INTEGER NOT NULL DEFAULT 0,
 		max_retries INTEGER NOT NULL,
 		run_at DATETIME NOT NULL,
 		idempotency_key TEXT UNIQUE,
+		started_at DATETIME,
+		finished_at DATETIME,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// Side Effect Idempotency Table
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS side_effects (
+		job_id INTEGER PRIMARY KEY,
+		effect_type TEXT NOT NULL,
+		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (job_id) REFERENCES jobs(id)
+	);
 	`)
 	if err != nil {
 		return err
@@ -52,7 +69,7 @@ func produceJob(req *CreateJob, db *sql.DB) error {
 
 // Claim Job
 func ClaimJob(db *sql.DB) (workerJob, error) {
-	row := db.QueryRow(`UPDATE jobs SET status = 'processing' WHERE id = (SELECT id FROM jobs WHERE status = 'queued' AND run_at <= datetime('now') ORDER BY run_at LIMIT 1)
+	row := db.QueryRow(`UPDATE jobs SET status = 'processing',started_at = datetime('now') WHERE id = (SELECT id FROM jobs WHERE status = 'queued' AND run_at <= datetime('now') ORDER BY run_at LIMIT 1)
 	RETURNING id, type, status, payload, max_retries, attempts,run_at`)
 	var job workerJob
 	err := row.Scan(&job.Id, &job.Type, &job.Status, &job.Payload, &job.MaxRetries, &job.Attempts, &job.RunAt)
@@ -69,10 +86,11 @@ func ClaimJob(db *sql.DB) (workerJob, error) {
 // mark the job Failed //retry and back off
 func markJobFailed(db *sql.DB, job workerJob) {
 	var att int
+	cont MaxRetries=5
 	if job.Attempts < job.MaxRetries {
 		att = job.Attempts + 1
-		for {
-			res, err := db.Exec(`UPDATE jobs SET status = 'queued',run_at = datetime('now', '+10 seconds'),attempts = ?   WHERE id = ? AND status='processing'`, att, job.Id)
+		for i:=1;i<=MaxRetries;i++ {
+			res, err := db.Exec(`UPDATE jobs SET status = 'queued',run_at = datetime('now', '+10 seconds'),attempts = ? WHERE id = ? AND status='processing'`, att, job.Id)
 			if err != nil {
 				if isLockedError(err) {
 					time.Sleep(1000 * time.Millisecond)
@@ -94,8 +112,8 @@ func markJobFailed(db *sql.DB, job workerJob) {
 			return
 		}
 	} else {
-		for {
-			res, err := db.Exec(`UPDATE jobs SET status = 'failed' WHERE id = ? AND status='processing'`, job.Id)
+		for i:=1;i<=MaxRetries;i++ {
+			res, err := db.Exec(`UPDATE jobs SET status = 'failed',finished_at = datetime('now') WHERE id = ? AND status='processing'`, job.Id)
 			if err != nil {
 				if isLockedError(err) {
 					time.Sleep(time.Millisecond)
@@ -120,15 +138,16 @@ func markJobFailed(db *sql.DB, job workerJob) {
 }
 
 func markJobDone(db *sql.DB, id int) {
-	for {
-		res, err := db.Exec(`UPDATE jobs SET status = 'done' WHERE id = ? AND status='processing'`, id)
+	cont MaxRetries=5
+	for i:=1;i<=MaxRetries;i++ {
+		res, err := db.Exec(`UPDATE jobs SET status = 'done',finished_at = datetime('now') WHERE id = ? AND status='processing'`, id)
 
 		if err != nil {
 			if isLockedError(err) {
 				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
-			log.Println("mark Job Done error:", err)
+			log.Println(err)
 			return
 		}
 
@@ -155,4 +174,13 @@ func isLockedError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "database is locked") ||
 		strings.Contains(msg, "database is busy")
+}
+
+// apply Side-Effect
+func applySideEffect(db *sql.DB, job workerJob) error {
+	_, err = db.Exec(`INSERT INTO side_effects (job_id,effect_type,applied_at) VALUES (?,?,datetime('now'));`, job.Id, job.Type)
+	if err != nil {
+		return err
+	}
+	return nil
 }

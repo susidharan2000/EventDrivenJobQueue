@@ -37,6 +37,10 @@ func main() {
 	if _, err := db.Exec("PRAGMA busy_timeout=5000;"); err != nil {
 		log.Fatal(err)
 	}
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//load .env
 	if err := godotenv.Load(); err != nil {
@@ -56,6 +60,7 @@ func main() {
 	//start
 	go startDispatcher(db)
 	go startWorkers(db)
+	go startVisibilityReaper(db)
 
 	router := NewRouter(db)
 	port := 8080

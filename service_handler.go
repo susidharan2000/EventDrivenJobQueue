@@ -1,8 +1,11 @@
 package main
 
-import "errors"
+import (
+	"database/sql"
+	"errors"
+)
 
-func executeJob(job workerJob) error {
+func executeJob(db *sql.DB, job workerJob) error {
 	// log.Println("executing job:", job.Id)
 	// // simulate work
 	// time.Sleep(1 * time.Second)
@@ -17,6 +20,7 @@ func executeJob(job workerJob) error {
 		if err != nil {
 			return err
 		}
+		//applySideEffect(db, job)
 	default:
 		return errors.New("invalid type request")
 	}

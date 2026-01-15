@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 	"os"
 	"strconv"
 )
@@ -19,8 +20,12 @@ func startWorkers(db *sql.DB) {
 
 func worker(db *sql.DB) {
 	for job := range workerCh {
-		err := executeJob(job)
 
+		err := executeJob(db, job)
+		if err != nil {
+			log.Printf("Execute Job Error: %s", err)
+			return
+		}
 		if err != nil {
 			markJobFailed(db, job)
 		} else {
