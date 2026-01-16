@@ -32,19 +32,6 @@ func InitJobsSchema(db *sql.DB) error {
 		return err
 	}
 
-	// Side Effect Idempotency Table
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS side_effects (
-		job_id INTEGER PRIMARY KEY,
-		effect_type TEXT NOT NULL,
-		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (job_id) REFERENCES jobs(id)
-	);
-	`)
-	if err != nil {
-		return err
-	}
-
 	// for Dispatcher lookup
 	if _, err := db.Exec(`
 	CREATE INDEX IF NOT EXISTS idx_jobs_status_run_at
@@ -174,13 +161,4 @@ func isLockedError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "database is locked") ||
 		strings.Contains(msg, "database is busy")
-}
-
-// apply Side-Effect
-func applySideEffect(db *sql.DB, job workerJob) error {
-	_, err = db.Exec(`INSERT INTO side_effects (job_id,effect_type,applied_at) VALUES (?,?,datetime('now'));`, job.Id, job.Type)
-	if err != nil {
-		return err
-	}
-	return nil
 }
