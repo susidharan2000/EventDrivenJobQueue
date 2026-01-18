@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 // Handler
 // Producer handler
-func CreatejobRequest(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func CreatejobRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, requestLimiter chan struct{}, producerLimiter chan struct{}) {
 	//request limiter
 	select {
 	case requestLimiter <- struct{}{}:

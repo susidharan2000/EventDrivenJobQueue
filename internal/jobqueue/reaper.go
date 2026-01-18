@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"database/sql"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func startVisibilityReaper(db *sql.DB) {
+func StartVisibilityReaper(db *sql.DB) {
 	timer := time.NewTicker(30 * time.Second)
 	go func() {
 		for range timer.C {

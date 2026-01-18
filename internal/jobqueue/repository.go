@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"database/sql"
@@ -55,29 +55,29 @@ func produceJob(req *CreateJob, db *sql.DB) error {
 }
 
 // Claim Job
-func ClaimJob(db *sql.DB) (workerJob, error) {
+func ClaimJob(db *sql.DB) (WorkerJob, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return workerJob{}, err
+		return WorkerJob{}, err
 	}
 	defer tx.Rollback()
 
 	row := tx.QueryRow(`UPDATE jobs SET status = 'processing',started_at = datetime('now') WHERE id = (SELECT id FROM jobs WHERE status = 'queued' AND run_at <= datetime('now') ORDER BY run_at LIMIT 1)
 	RETURNING id, type, status, payload, max_retries, attempts,run_at`)
-	var job workerJob
+	var job WorkerJob
 	err = row.Scan(&job.Id, &job.Type, &job.Status, &job.Payload, &job.MaxRetries, &job.Attempts, &job.RunAt)
 	if err == sql.ErrNoRows {
-		return workerJob{}, err
+		return WorkerJob{}, err
 	}
 
 	if err != nil {
-		return workerJob{}, err
+		return WorkerJob{}, err
 	}
 	return job, tx.Commit()
 }
 
 // mark the job Failed //retry and back off
-func markJobFailed(db *sql.DB, job workerJob) {
+func markJobFailed(db *sql.DB, job WorkerJob) {
 	const MaxRetries = 5
 	if job.Attempts < job.MaxRetries {
 		for i := 1; i <= MaxRetries; i++ {

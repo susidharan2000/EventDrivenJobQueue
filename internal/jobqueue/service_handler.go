@@ -1,14 +1,14 @@
-package main
+package jobqueue
 
 import (
 	"database/sql"
 	"errors"
 )
 
-func executeJob(db *sql.DB, job workerJob) error {
+func executeJob(db *sql.DB, job WorkerJob) error {
 	switch job.Type {
 	case "email":
-		err := sendMail(job.Payload)
+		err := SendMail(job.Payload)
 		if err != nil {
 			return err
 		}

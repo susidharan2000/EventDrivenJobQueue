@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func sendMail(payload json.RawMessage) error {
+func SendMail(payload json.RawMessage) error {
 	var email Email
 	err := json.Unmarshal(payload, &email)
 	if err != nil {

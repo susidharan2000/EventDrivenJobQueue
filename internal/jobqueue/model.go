@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ type CreateJob struct {
 	IdempotencyKey *string         `json:"idempotency_key"`
 }
 
-type workerJob struct {
+type WorkerJob struct {
 	Id         int             `json:"id"`
 	Type       string          `json:"type"`
 	Status     string          `json:"status"`

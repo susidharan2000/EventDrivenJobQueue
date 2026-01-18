@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"github.com/susi/EventDrivenJobQueue/internal/jobqueue"
 	_ "modernc.org/sqlite"
 )
 
@@ -21,7 +22,7 @@ var requestLimiter = make(chan struct{}, 100)
 // producer Limiter
 var producerLimiter = make(chan struct{}, 50)
 
-var workerCh = make(chan workerJob, 10)
+var workerCh = make(chan jobqueue.WorkerJob, 10)
 
 var wg = sync.WaitGroup{}
 
@@ -67,7 +68,7 @@ func main() {
 	}
 
 	// Inilize Schema
-	if err = InitJobsSchema(db); err != nil {
+	if err = jobqueue.InitJobsSchema(db); err != nil {
 		log.Fatal(err)
 	}
 
@@ -77,11 +78,11 @@ func main() {
 	db.SetMaxIdleConns(1)
 
 	//start
-	go startDispatcher(db, ctx)
-	go startWorkers(db)
-	go startVisibilityReaper(db)
+	go jobqueue.StartDispatcher(db, ctx, workerCh)
+	go jobqueue.StartWorkers(db, workerCh, &wg)
+	go jobqueue.StartVisibilityReaper(db)
 
-	router := NewRouter(db)
+	router := jobqueue.NewRouter(db, requestLimiter, producerLimiter)
 	port := 8080
 	adr := fmt.Sprintf(":%v", port)
 	go func() {
@@ -92,7 +93,8 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	wg.Wait()
+	close(workerCh) //close the dispatcher and worker communication
+	wg.Wait()       //wait untill all the workers conplete before shutdown
 
 	//time.Sleep(5 * time.Second)
 }

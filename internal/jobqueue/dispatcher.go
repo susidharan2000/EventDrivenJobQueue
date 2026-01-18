@@ -1,4 +1,4 @@
-package main
+package jobqueue
 
 import (
 	"context"
@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-func startDispatcher(db *sql.DB, ctx context.Context) {
-	defer close(workerCh)
+func StartDispatcher(db *sql.DB, ctx context.Context, workerCh chan WorkerJob) {
 	// pull the job from the db and assign to the worker
 	for {
 		select {
