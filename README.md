@@ -6,7 +6,7 @@
 ---
 
 ## Overview
-> **A persistent, event-driven background job queue designed to execute jobs reliably under crashes and shutdowns.**
+> A persistent, **event-driven background job queue** designed to execute jobs reliably under crashes and shutdowns.
 > _This **system guarantees at-least-once execution** and **explicitly does NOT attempt exactly-once** semantics._
 ---
 
