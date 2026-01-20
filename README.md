@@ -161,6 +161,7 @@ curl -X POST http://localhost:8080/createJob \
 
 - `201 Created`
 Job was durably persisted and scheduled for execution.
+
 - `429 Too Many Requests`
 System is under backpressure. Client should retry later.
 
