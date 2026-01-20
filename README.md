@@ -58,4 +58,13 @@ The system explicitly does **NOT** attempt to solve:
 ---
 
 ## ⚙️ Architecture
+**Execution flow:**
+<p align="center">
+  <img src="docs/architecture.png" alt="Event-Driven Job Queue Architecture" width="900">
+</p>
+**Core principles:**
+
+**• The database is the single source of truth**  
+**• In-memory components coordinate execution, not correctness**  
+**• Correctness is enforced via atomic state transitions, not worker behavior**
 
