@@ -14,11 +14,14 @@
 ## Problem Statement
 > Background job processing is deceptively hard.
 >
-> • Processes crash  
-> • Workers die mid-execution  
-> • Shutdowns happen at the worst possible time  
-> • Losing jobs is unacceptable  
-> • Preventing all duplicate execution is impractical
+> - Processes crash  
+> - Workers die mid-execution  
+> - Shutdowns happen at the worst possible time  
+> - Losing jobs is unacceptable  
+> - Preventing all duplicate execution is impractical  
+
+The core problem is executing background jobs **reliably under failure**, without losing work, while keeping the system **simple, debuggable, and correct**.
+
 
 
 ---
@@ -27,20 +30,20 @@
 
 This system guarantees:
 
-**• At-least-once execution**  
-**• No job loss after persistence**  
-**• Eventual recovery of stuck jobs via visibility timeouts**  
-**• Bounded retries and bounded concurrency**  
-**• Graceful shutdown without partial job state writes**
+- **At-least-once execution**  
+- **No job loss after persistence**  
+- **Eventual recovery of stuck jobs via visibility timeouts**  
+- **Bounded retries and bounded concurrency**  
+- **Graceful shutdown without partial job state writes**
 
 Duplicate execution is possible by design and must be handled via idempotent side effects where required.
 
 This system does **NOT** guarantee:
 
-**• Exactly-once execution**  
-**• Distributed fault tolerance**  
-**• Global job ordering**  
-**• Real-time execution guarantees**
+- **Exactly-once execution**  
+- **Distributed fault tolerance**  
+- **Global job ordering**  
+- **Real-time execution guarantees**
 
 **These trade-offs are intentional and enable simpler recovery and failure handling.**
 
@@ -50,10 +53,10 @@ This system does **NOT** guarantee:
 
 The system explicitly does **NOT** attempt to solve:
 
-**• Exactly-once semantics**  
-**• Distributed scheduling across nodes**  
-**• High-throughput streaming**  
-**• Horizontal database scalability**
+- **Exactly-once semantics**  
+- **Distributed scheduling across nodes**  
+- **High-throughput streaming**  
+- **Horizontal database scalability**
 
 **The design prioritizes correctness, clarity, and failure-mode reasoning over scale.**
 
@@ -79,5 +82,22 @@ The system explicitly does **NOT** attempt to solve:
 **Full design rationale, failure modes, and explicit trade-offs are documented here:**
 
 👉 **[DESIGN.pdf](docs/DESIGN.pdf)**
+
+## Build & Run
+
+### Prerequisites
+
+- **Go 1.20+**
+- **No external dependencies**
+  - SQLite is embedded via `modernc.org/sqlite`
+
+---
+
+### Compile
+
+Build the server binary:
+
+```bash
+go build -o bin/server ./cmd/server
 
 
