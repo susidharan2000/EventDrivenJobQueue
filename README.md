@@ -91,6 +91,32 @@ The system explicitly does **NOT** attempt to solve:
 - **No external dependencies**
   - SQLite is embedded via `modernc.org/sqlite`
 
+### Configuration
+
+Certain job handlers (e.g., email delivery) require external credentials.
+
+The system reads configuration from environment variables, typically
+loaded via a `.env` file during local development.
+
+### Worker Count
+ ``` bash 
+ WORKER_COUNT=10
+ ```
+
+### Email Configuration (Example)
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587 
+GMAIL_USER=your@gmail.com
+GMAIL_APP_PASSWORD=your-app-password
+```
+These credentials are required only for job types that perform
+external side effects (such as sending emails).
+
+**The job queue remains fully functional without this configuration; only the corresponding job handlers will fail.**
+
+
 ---
 
 ### Compile
@@ -111,6 +137,7 @@ Start the job queue server:
 ```bash
 ./bin/server
 ```
+The server listens on port 8080 by default.
 
 ### Submit a Job
 
