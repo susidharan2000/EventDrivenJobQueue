@@ -107,6 +107,38 @@ bin/server
 
 ### Run 
 
+Start the job queue server:
+```bash
+./bin/server
+```
+
+### Submit a Job
+
+Jobs are submitted via HTTP :
+```bash
+curl -X POST http://localhost:8080/createJob \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "email",
+    "payload": {
+      "email": "user@example.com",
+      "subject": "Welcome",
+      "message": "Hello"
+    },
+    "max_retries": 3,
+    "idempotency_key": "welcome-New-user-123"
+  }'
+```
+
+### Response Semantics
+
+- `201 Created`
+Job was durably persisted and scheduled for execution.
+- `429 Too Many Requests`
+System is under backpressure. Client should retry later.
+
+
+
 
 
 
