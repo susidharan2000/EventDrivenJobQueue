@@ -13,7 +13,6 @@
 > - Execution is at-least-once
 > - Recovery is explicit and deterministic
 >
-> _This **system guarantees at-least-once execution** and **explicitly does NOT attempt exactly-once semantics.**_
 ---
 
 ## Problem Statement
@@ -30,7 +29,7 @@ The real problem is **never losing work while recovering safely from failure.**
 This project focuses on that exact problem.
 
 ## Core Design Principle
-> Never lose a persisted job.
+> **Never lose a persisted job.**
 >
 > Duplicate execution is acceptable. Silent loss is not.
 >
