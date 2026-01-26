@@ -33,7 +33,7 @@ This project focuses on that exact problem.
 >
 > Duplicate execution is acceptable. Silent loss is not.
 >
-The system is built around this invariant
+> The system is built around this invariant
 ---
 
 ## Guarantees
