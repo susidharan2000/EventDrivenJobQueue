@@ -1,29 +1,38 @@
 # Event-Driven Job Queue
 
-> **Crash-resilient background job system**  
-> _Mini Sidekiq / Celery_
+> **A crash-resilient, persistent background job system**  
+> _A minimal Sidekiq / Celery–style queue focused on correctness under failure_
 
 ---
 
 ## Overview
-> A persistent, **event-driven background job queue** designed to execute jobs reliably under crashes and shutdowns.
+> Event-Driven Job Queue is a persistent, event-driven background job system designed to survive process crashes, worker failures, and unclean shutdowns without losing work.
+>
+> The system is intentionally simple:
+> - Jobs are durably persisted
+> - Execution is at-least-once
+> - Recovery is explicit and deterministic
 >
 > _This **system guarantees at-least-once execution** and **explicitly does NOT attempt exactly-once semantics.**_
 ---
 
 ## Problem Statement
-> Background job processing is deceptively hard.
+> Background job processing looks easy until failure happens.
 >
-> - Processes crash  
-> - Workers die mid-execution  
-> - Shutdowns happen at the worst possible time  
-> - Losing jobs is unacceptable  
-> - Preventing all duplicate execution is impractical  
+> - Processes crash mid-execution 
+> - Workers die without cleanup
+> - Shutdowns interrupt in-flight jobs
+> - Retries cause duplicate side effects
+> - Silent job loss is unacceptable 
 
-The core problem is executing background jobs **reliably under failure**, without losing work, while keeping the system **simple, debuggable, and correct**.
+Preventing all duplicate execution is impractical in real systems.
+The real problem is **never losing work while recovering safely from failure.**
+This project focuses on that exact problem.
 
-
-
+## Core Design Principle
+> Never lose a persisted job.
+> Duplicate execution is acceptable. Silent loss is not.
+The system is built around this invariant
 ---
 
 ## Guarantees
@@ -32,6 +41,7 @@ This system guarantees:
 
 - **At-least-once execution**  
 - **No job loss after persistence**  
+- **Crash recovery on restart**
 - **Eventual recovery of stuck jobs via visibility timeouts**  
 - **Bounded retries and bounded concurrency**  
 - **Graceful shutdown without partial job state writes**
@@ -48,6 +58,20 @@ This system does **NOT** guarantee:
 **These trade-offs are intentional and enable simpler recovery and failure handling.**
 
 ---
+
+## Failure Model
+
+The system is designed under the assumption that failures are normal, not exceptional.
+
+| Failure Scenario | System Behavior |
+|------------------|-----------------|
+| Process crash | Jobs are durably recovered from persistence on restart |
+| Worker crash mid-execution | Job becomes eligible for re-dispatch after visibility timeout |
+| Duplicate execution | Allowed and expected; external side effects must be idempotent |
+| Shutdown during execution | Graceful shutdown prevents partial state commits |
+
+Failure handling is explicit and deterministic, prioritizing correctness and recoverability over best-effort execution.
+
 
 ## Non-Goals
 
