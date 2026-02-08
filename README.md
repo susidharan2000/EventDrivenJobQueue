@@ -2,6 +2,7 @@
 
 > **A crash-resilient, persistent background job system**  
 > _A minimal Sidekiq / Celery–style queue focused on correctness under failure_
+>
 >_**Tech Stack**: Go, SQLite (WAL), HTTP, Worker Pools_
 ---
 
