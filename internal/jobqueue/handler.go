@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	"github.com/susi/EventDrivenJobQueue/internal/metrics"
 )
 
 // Handler
@@ -59,6 +61,8 @@ func CreatejobRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, reques
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// metrics
+	metrics.M.IncQueueDepth()
 
 	//success response
 	SuccessResponse(w, http.StatusCreated, "Job created Successfully")

@@ -2,7 +2,7 @@
 
 > **A crash-resilient, persistent background job system**  
 > _A minimal Sidekiq / Celery–style queue focused on correctness under failure_
-
+>_**Tech Stack**: Go, SQLite (WAL), HTTP, Worker Pools_
 ---
 
 ## Overview
@@ -29,11 +29,23 @@ The real problem is **never losing work while recovering safely from failure.**
 This project focuses on that exact problem.
 
 ## Core Design Principle
-> **Never lose a persisted job.**
+> The system is built on a single invariant: **persisted jobs must never be lost.** 
 >
-> **Duplicate execution is acceptable. Silent loss is not.**
+> Execution follows an **at-least-once model**, where duplicate runs are acceptable but silent job loss is not.  
+>
+> SQLite acts as the source of truth, while in-memory components only coordinate execution. 
+>
+> Correctness is enforced through atomic state transitions and centralized scheduling, not worker behavior.
 >
 > The system is built around this invariant.
+
+---
+
+## ⚙️ Architecture
+**Execution flow:**
+<p align="center">
+  <img src="docs/architecture.png" alt="Event-Driven Job Queue Architecture" width="900">
+</p>
 
 ---
 
@@ -58,6 +70,58 @@ This system does **NOT** guarantee:
 - **Real-time execution guarantees**
 
 **These trade-offs are intentional and enable simpler recovery and failure handling.**
+
+---
+## Performance Characteristics
+
+Baseline benchmark using a controlled workload (local environment, SQLite WAL, 10 workers, simulated 50ms job workload):
+
+| Metric | Value |
+|---|---|
+| Workers | 10 |
+| Jobs processed | 10,968 |
+| Avg execution latency | ~50 ms |
+| Avg queue latency | ~195 ms |
+| Failures | 0 |
+| Retries | 0 |
+| Queue depth | Stable (no backlog) |
+
+Estimated throughput derived from workload and concurrency:
+
+> **~180 jobs/sec sustained processing**
+
+Throughput is bounded primarily by:
+
+- worker concurrency  
+- SQLite write serialization  
+- WAL + fsync commit latency  
+
+When executing real-world jobs (email, webhook, API):
+
+System throughput becomes dominated by:
+
+- network latency  
+- provider rate limits  
+- external service SLAs  
+
+The queue engine remains stable; the bottleneck shifts to external dependencies.
+
+---
+## Observability
+
+The system exposes runtime health metrics for operational visibility:
+
+- active workers  
+- queue depth  
+- retry count  
+- success / failure counts  
+- dead-letter count  
+- average queue latency  
+- average execution latency  
+
+Metrics are maintained in memory and reflect real-time system behavior.
+
+Throughput is measured via controlled load testing and derived from completed jobs over time, rather than exposed as a live runtime metric.
 
 ---
 
@@ -88,21 +152,6 @@ The system explicitly does **NOT** attempt to solve:
 **The design prioritizes correctness, clarity, and failure-mode reasoning over scale.**
 
 ---
-
-## ⚙️ Architecture
-**Execution flow:**
-<p align="center">
-  <img src="docs/architecture.png" alt="Event-Driven Job Queue Architecture" width="900">
-</p>
-
-**Core principles:**
-
-- **The database is the single source of truth**
-- **In-memory components coordinate execution, not correctness**
-- **Correctness is enforced via atomic state transitions, not worker behavior**
-- **Scheduling decisions are centralized to simplify correctness reasoning**
-
-
 
 ## Design Details
 
@@ -192,6 +241,40 @@ Job was durably persisted and scheduled for execution.
 - `429 Too Many Requests`
 System is under backpressure. Client should retry later.
 
+--- 
+---
+
+## Metrics Endpoint
+
+Runtime metrics are exposed via an HTTP endpoint:
+
+```bash
+GET http://localhost:8080/metrics
+```
+
+# Example response:
+```json
+{
+  "active_workers": 0,
+  "avg_execution_ms": 50,
+  "avg_time_in_queue_ms": 195,
+  "dead_letter_count": 0,
+  "failure_count": 0,
+  "queue_depth": 0,
+  "retry_count": 0,
+  "success_count": 10968
+}
+```
+
+### Metric definitions
+
+- **active_workers** — number of jobs currently executing  
+- **queue_depth** — jobs waiting in persistence  
+- **avg_execution_ms** — average job execution latency  
+- **avg_time_in_queue_ms** — average time spent waiting before execution  
+- **retry_count** — total retry attempts triggered  
+- **success_count / failure_count** — completed job outcomes  
+- **dead_letter_count** — jobs moved to DLQ after exhausting retries  
 
 
 

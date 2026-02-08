@@ -69,9 +69,9 @@ func ClaimJob(db *sql.DB, ctx context.Context) (WorkerJob, error) {
 	}()
 
 	row := tx.QueryRowContext(ctx, `UPDATE jobs SET status = 'processing',attempts = attempts+1,started_at = datetime('now') WHERE id = (SELECT id FROM jobs WHERE status = 'queued' AND run_at <= datetime('now') ORDER BY run_at LIMIT 1)
-	RETURNING id, type, status, payload, max_retries, attempts,run_at`)
+	RETURNING id, type, status, payload, max_retries, attempts,run_at,started_at,finished_at,created_at,updated_at`)
 	var job WorkerJob
-	err = row.Scan(&job.Id, &job.Type, &job.Status, &job.Payload, &job.MaxRetries, &job.Attempts, &job.RunAt)
+	err = row.Scan(&job.Id, &job.Type, &job.Status, &job.Payload, &job.MaxRetries, &job.Attempts, &job.RunAt, &job.StartedAt, &job.FinishedAt, &job.CreatedAt, &job.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return WorkerJob{}, err
 	}
@@ -87,84 +87,69 @@ func ClaimJob(db *sql.DB, ctx context.Context) (WorkerJob, error) {
 }
 
 // mark the job Failed //retry and back off
-func markJobFailed(db *sql.DB, job WorkerJob) {
-	const MaxRetries = 5
-	if job.Attempts < job.MaxRetries {
-		for i := 1; i <= MaxRetries; i++ {
-			res, err := db.Exec(`UPDATE jobs SET status = 'queued',run_at = datetime('now', '+10 seconds') WHERE id = ? AND status='processing'`, job.Id)
-			if err != nil {
-				if isLockedError(err) {
-					time.Sleep(1000 * time.Millisecond)
-					continue
-				}
-				fmt.Printf("Failed state update failed")
-				return
+func markJobFailed(db *sql.DB, job WorkerJob) error {
+	const dbRetryAttempts = 5
+
+	for i := 0; i < dbRetryAttempts; i++ {
+		res, err := db.Exec(`UPDATE jobs SET status = 'failed',finished_at = datetime('now') WHERE id = ? AND status='processing'`, job.Id)
+		if err != nil {
+			if isLockedError(err) {
+				time.Sleep(200 * time.Millisecond)
+				continue
 			}
-			affected, err := res.RowsAffected()
-			if err != nil {
-				log.Println("Rows Affected error:", err)
-				return
-			}
-			if affected == 0 {
-				fmt.Printf("Failed state update failed")
-				return
-			}
-			//fmt.Printf("Attempts:%v, MaxRetries:%v \n", att, job.MaxRetries)
-			return
+			return err
 		}
-	} else {
-		for i := 1; i <= MaxRetries; i++ {
-			res, err := db.Exec(`UPDATE jobs SET status = 'failed',finished_at = datetime('now') WHERE id = ? AND status='processing'`, job.Id)
-			if err != nil {
-				if isLockedError(err) {
-					time.Sleep(time.Millisecond)
-					continue
-				}
-				log.Println("markJobFailed error:", err)
-				return
-			}
-			affected, err := res.RowsAffected()
-			if err != nil {
-				log.Println("Rows Affected error:", err)
-				return
-			}
-			if affected == 0 {
-				fmt.Printf("Failed state update failed")
-				return
-			}
-			log.Println("Job Marked", err)
-			return
+		affected, _ := res.RowsAffected()
+		if affected == 0 {
+			return nil
 		}
+		log.Printf("Job %s marked FAILED", job.Id)
+		return nil
 	}
+	return fmt.Errorf("failed to mark job failed after retries")
 }
 
-func markJobDone(db *sql.DB, id int) {
-	const MaxRetries = 5
-	for i := 1; i <= MaxRetries; i++ {
+func markJobDone(db *sql.DB, id int) error {
+	const dbRetryAttempts = 5
+	for i := 1; i <= dbRetryAttempts; i++ {
 		res, err := db.Exec(`UPDATE jobs SET status = 'done',finished_at = datetime('now') WHERE id = ? AND status='processing'`, id)
 
 		if err != nil {
 			if isLockedError(err) {
-				time.Sleep(1000 * time.Millisecond)
+				time.Sleep(200 * time.Millisecond)
 				continue
 			}
 			log.Println(err)
-			return
+			return err
 		}
 
-		affected, err := res.RowsAffected()
-		if err != nil {
-			log.Println("RowsAffected error:", err)
-			return
-		}
+		affected, _ := res.RowsAffected()
 		if affected == 0 {
-			log.Println("mark Jobs success error:", err)
-			return
+			log.Printf("job %d update affected 0 rows", id)
+			return nil
 		}
 
-		fmt.Printf("%v: Job Done\n", id)
-		return
+		log.Printf("job %d marked done", id)
+		return nil
 	}
+	return fmt.Errorf("failed to mark job done after retries")
+}
+
+func requeueJob(db *sql.DB, job WorkerJob) error {
+	_, err := db.Exec(`
+		UPDATE jobs
+		SET
+			status = 'queued',
+			started_at = NULL,
+			run_at = datetime('now', '+30 seconds'),
+			updated_at = datetime('now')
+		WHERE id = ?
+		AND status = 'processing'
+	`, job.Id)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // is database lock check

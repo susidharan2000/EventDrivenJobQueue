@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"log"
 	"time"
+
+	"github.com/susi/EventDrivenJobQueue/internal/metrics"
 )
 
 func StartDispatcher(db *sql.DB, ctx context.Context, workerCh chan WorkerJob) {
@@ -18,6 +20,9 @@ func StartDispatcher(db *sql.DB, ctx context.Context, workerCh chan WorkerJob) {
 		default:
 		}
 		job, err := ClaimJob(db, ctx)
+		if job.Attempts > 1 {
+			metrics.M.IncRetryCount()
+		}
 		if err == sql.ErrNoRows {
 			time.Sleep(500 * time.Millisecond)
 			continue
@@ -28,6 +33,12 @@ func StartDispatcher(db *sql.DB, ctx context.Context, workerCh chan WorkerJob) {
 			time.Sleep(time.Second)
 			continue
 		}
+		//metrics
+		metrics.M.DecQueueDepth()
+
+		queueTimeMs := job.StartedAt.Sub(job.RunAt).Milliseconds()
+		metrics.M.AddQueueTime(queueTimeMs)
+
 		select {
 		case workerCh <- job:
 		case <-ctx.Done():

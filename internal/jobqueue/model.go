@@ -1,6 +1,7 @@
 package jobqueue
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 )
@@ -22,6 +23,10 @@ type WorkerJob struct {
 	MaxRetries int             `json:"max_retries"`
 	Attempts   int             `json:"attempts"`
 	RunAt      time.Time       `json:"run_at"`
+	StartedAt  time.Time       `json:"started_at"`
+	FinishedAt sql.NullTime    `json:"finished_at"`
+	CreatedAt  time.Time       `json:"created_at"`
+	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
 type Email struct {

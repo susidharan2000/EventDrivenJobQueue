@@ -17,3 +17,8 @@ func executeJob(db *sql.DB, job WorkerJob) error {
 	}
 	return nil
 }
+
+// func executeJob(db *sql.DB, job WorkerJob) error {
+// 	time.Sleep(50 * time.Millisecond) // simulate real work
+// 	return nil
+// }

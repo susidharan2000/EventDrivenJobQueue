@@ -14,6 +14,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/susi/EventDrivenJobQueue/internal/jobqueue"
+	"github.com/susi/EventDrivenJobQueue/internal/metrics"
 	_ "modernc.org/sqlite"
 )
 
@@ -78,6 +79,8 @@ func main() {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
+	//Load metircs Data
+	metrics.LoadMetrics(db)
 	//start
 	go jobqueue.StartDispatcher(db, ctx, workerCh)
 	go jobqueue.StartWorkers(db, workerCh, &wg)

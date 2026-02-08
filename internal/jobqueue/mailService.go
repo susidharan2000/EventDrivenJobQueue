@@ -3,6 +3,7 @@ package jobqueue
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 
 	"gopkg.in/gomail.v2"
@@ -37,8 +38,9 @@ func SendMail(payload json.RawMessage) error {
 		pass,
 	)
 	if err := dial.DialAndSend(mail); err != nil {
+		log.Print(err)
 		return err
 	}
-	//fmt.Println("Mail Sent Successfully")
+	log.Println("Mail Sent Successfully")
 	return nil
 }
