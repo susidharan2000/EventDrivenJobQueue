@@ -24,10 +24,8 @@
 > - Shutdowns interrupt in-flight jobs
 > - Retries cause duplicate side effects
 > - Silent job loss is unacceptable 
-
-Preventing all duplicate execution is impractical in real systems.
-The real problem is **never losing work while recovering safely from failure.**
-This project focuses on that exact problem.
+>
+>Preventing all duplicate execution is impractical in real systems.The real problem is **never losing work while recovering safely from failure.** This project focuses on that exact problem.
 ---
 ## Core Design Principle
 > The system is built on a single invariant: **persisted jobs must never be lost.** 
