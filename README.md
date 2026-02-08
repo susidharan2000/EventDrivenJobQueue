@@ -28,7 +28,7 @@
 Preventing all duplicate execution is impractical in real systems.
 The real problem is **never losing work while recovering safely from failure.**
 This project focuses on that exact problem.
-
+---
 ## Core Design Principle
 > The system is built on a single invariant: **persisted jobs must never be lost.** 
 >
@@ -243,7 +243,6 @@ Job was durably persisted and scheduled for execution.
 System is under backpressure. Client should retry later.
 
 --- 
----
 
 ## Metrics Endpoint
 
@@ -253,7 +252,7 @@ Runtime metrics are exposed via an HTTP endpoint:
 GET http://localhost:8080/metrics
 ```
 
-# Example response:
+### Example response:
 ```json
 {
   "active_workers": 0,
