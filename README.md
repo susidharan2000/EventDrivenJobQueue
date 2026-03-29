@@ -73,8 +73,6 @@ This system does **NOT** guarantee:
 ---
 ## Performance Characteristics
 
-## Performance Characteristics
-
 ### Scaling Behavior
 
 System performance was evaluated using **50,000 jobs (~100ms execution time)** across varying concurrency levels:
