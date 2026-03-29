@@ -88,6 +88,29 @@ System performance was evaluated using **50,000 jobs (~100ms execution time)** a
 
 ---
 
+### Throughput
+
+Under controlled load, throughput scales with worker concurrency and job execution time.
+
+Based on observed system behavior (optimal concurrency ~50–100 workers):
+
+#### Lightweight Jobs (~100–200ms)
+
+- ~100ms → ~1000 jobs/sec  
+- ~200ms → ~500 jobs/sec  
+
+> **Estimated range: ~500–1000 jobs/sec**
+
+---
+
+#### Heavier Jobs (~500–900ms)
+
+- ~500ms → ~200 jobs/sec  
+- ~900ms → ~110 jobs/sec  
+
+> **Estimated range: ~100–200 jobs/sec**
+
+---
 ### Key Observations
 
 #### 1. Scaling improves performance — up to a point
@@ -152,9 +175,9 @@ Under lightweight workloads (~100ms jobs):
 
 ### Real-World Workload Considerations
 
-When executing real-world jobs (e.g., email delivery, webhooks, external APIs):
+These benchmarks are based on **controlled simulated workloads**.
 
-System throughput becomes dominated by:
+When executing real-world jobs (e.g., email delivery, webhooks, external APIs), throughput becomes dominated by:
 
 - **Network latency**  
 - **External service rate limits**  
