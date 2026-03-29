@@ -73,37 +73,96 @@ This system does **NOT** guarantee:
 ---
 ## Performance Characteristics
 
-Baseline benchmark using a controlled workload (local environment, SQLite WAL, 10 workers, simulated 50ms job workload):
+## Performance Characteristics
 
-| Metric | Value |
-|---|---|
-| Workers | 10 |
-| Jobs processed | 10,968 |
-| Avg execution latency | ~50 ms |
-| Avg queue latency | ~195 ms |
-| Failures | 0 |
-| Retries | 0 |
-| Queue depth | Stable (no backlog) |
+### Scaling Behavior
 
-Estimated throughput derived from workload and concurrency:
+System performance was evaluated using **50,000 jobs (~100ms execution time)** across varying concurrency levels:
 
-> **~180 jobs/sec sustained processing**
+| Workers | Avg Queue Time |
+|--------|---------------|
+| 10     | ~200 sec      |
+| 20     | ~69 sec       |
+| 50     | ~0.5 sec      |
+| 100    | ~0.25 sec     |
+| 200    | ~0.25 sec     |
+| 500    | ~0.25 sec     |
 
-Throughput is bounded primarily by:
+---
 
-- worker concurrency  
-- SQLite write serialization  
-- WAL + fsync commit latency  
+### Key Observations
 
-When executing real-world jobs (email, webhook, API):
+#### 1. Scaling improves performance — up to a point
+
+- Increasing workers from **10 → 50** significantly reduces queue latency  
+- Increasing further (**50 → 100**) provides marginal gains  
+- Beyond **100 workers**, no meaningful improvement is observed  
+
+👉 Demonstrates **diminishing returns with increased concurrency**
+
+---
+
+#### 2. Optimal concurrency range
+
+The system achieves near-optimal performance at:
+
+> **~50–100 workers**
+
+- Queue latency stabilizes (~250ms)  
+- Additional workers do not improve throughput  
+
+---
+
+#### 3. Over-provisioning at high concurrency
+
+At higher worker counts (**200–500**):
+
+- Workers are frequently idle  
+- Jobs complete faster than they can be scheduled  
+- Queue drains rapidly  
+
+👉 Indicates **under-utilization due to excessive concurrency**
+
+---
+
+#### 4. Throughput characteristics
+
+Throughput is primarily bounded by:
+
+- **Worker concurrency**  
+- **SQLite write serialization**  
+- **WAL + fsync commit latency**  
+
+At higher concurrency levels:
+
+- Throughput plateaus  
+- Latency stabilizes  
+- No increase in failures or retries observed  
+
+👉 Indicates the system is no longer bottlenecked by execution or queuing
+
+---
+
+#### 5. Workload-bound system behavior
+
+Under lightweight workloads (~100ms jobs):
+
+- The system becomes **workload-bound**, not resource-bound  
+- Increasing concurrency does not improve performance  
+
+---
+
+### Real-World Workload Considerations
+
+When executing real-world jobs (e.g., email delivery, webhooks, external APIs):
 
 System throughput becomes dominated by:
 
-- network latency  
-- provider rate limits  
-- external service SLAs  
+- **Network latency**  
+- **External service rate limits**  
+- **Provider SLAs**  
 
-The queue engine remains stable; the bottleneck shifts to external dependencies.
+👉 The queue engine remains stable, but the bottleneck shifts to **external dependencies**
 
 ---
 ## Observability
